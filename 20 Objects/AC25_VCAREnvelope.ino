@@ -1,0 +1,181 @@
+//  ============================================================
+//
+//  Program: ArdCore VCEnvGenerator
+//
+//  Description: A sketch that produces an attack and decay
+//               envelope upon the receipt of a trigger at the
+//               clock input.
+//
+//  I/O Usage:
+//    Knob 1: Attack time standard
+//    Knob 2: Decay time standard
+//    Analog In 1: Attack time voltage adder
+//    Analog In 2: Decay time voltage adder
+//    Digital Out 1: Trigger on envelope peak
+//    Digital Out 2: Trigger on envelope end
+//    Clock In: Trigger in starts the envelope section
+//    Analog Out: 8-bit output
+//
+//  Input Expander: unused
+//  Output Expander: 8 bits of output exposed
+//
+//  Created:  19 Mar 2011  ddg
+//  Modified: 17 Apr 2012  ddg Updated for Arduino 1.0
+//
+//  ============================================================
+//
+//  License:
+//
+//  This software is licensed under the Creative Commons
+//  "Attribution-NonCommercial license. This license allows you
+//  to tweak and build upon the code for non-commercial purposes,
+//  without the requirement to license derivative works on the
+//  same terms. If you wish to use this (or derived) work for
+//  commercial work, please contact 20 Objects LLC at our website
+//  (www.20objects.com).
+//
+//  For more information on the Creative Commons CC BY-NC license,
+//  visit http://creativecommons.org/licenses/
+//
+//  ================= start of global section ==================
+
+//  constants related to the Arduino Nano pin use
+const int clkIn = 2;           // the digital (clock) input
+const int digPin[2] = {3, 4};  // the digital output pins
+const int pinOffset = 5;       // the first DAC pin (from 5-12)
+const int trigTime = 25;       // ms for a trigger output
+
+volatile int clkState = LOW;
+
+int digState[2] = {LOW, LOW};
+unsigned long digMilli[2] = {0, 0};
+
+int envState = 0;              // 0=off, 1=rising, -1 = falling
+float riseValue = 0.0;
+float fallValue = 0.0;
+float currValue = 0.0;
+
+//  ==================== start of setup() ======================
+void setup() {
+  // set up the digital (clock) input
+  pinMode(clkIn, INPUT);
+  
+  // set up the digital outputs
+  for (int i=0; i<2; i++) {
+    pinMode(digPin[i], OUTPUT);
+    digitalWrite(digPin[i], LOW);
+  }
+  
+  // set up the 8-bit DAC output pins
+  for (int i=0; i<8; i++) {
+    pinMode(pinOffset+i, OUTPUT);
+    digitalWrite(pinOffset+i, LOW);
+  }
+  
+  attachInterrupt(0, isr, RISING);
+}
+
+//  ==================== start of loop() =======================
+
+void loop()
+{
+  int doStart = 0;
+  
+  // if we get a clock, start the envelope
+  if (clkState) {
+    clkState = 0;
+    doStart = 1;
+  }
+  
+  // if we are at a start point, do rise handling
+  if (doStart) {
+    doStart = 0;
+    
+    if (envState == -1) {
+      digState[1] = HIGH;
+      digitalWrite(digPin[1], HIGH);
+      digMilli[1] = millis();
+    }
+    
+    envState = 1;    
+  }
+  
+  // make the necessary change to the value
+  if (envState == 1) {
+    currValue += riseValue;
+  } else if (envState == -1) {
+    currValue -= fallValue;
+  }
+  
+  // check for peak transition, do fall handling
+  if (currValue > 255.0) {
+    currValue = 255.0;
+    envState = -1;
+    
+    digState[0] = HIGH;
+    digitalWrite(digPin[0], HIGH);
+    digMilli[0] = millis();
+  }
+  
+  // check for end transition, do end handling
+  if (currValue < 0.0) {
+    currValue = 0.0;
+    envState = 0;
+    
+    digState[1] = HIGH;
+    digitalWrite(digPin[1], HIGH);
+    digMilli[1] = millis();
+  }
+  
+  // output the value
+  dacOutput(int(currValue));
+  
+  // deal with trigger output handling
+  for (int i=0; i<2; i++) {
+    if ((digState[i] == HIGH) && (millis() - digMilli[i] > trigTime)) {
+      digState[i] = LOW;
+      digitalWrite(digPin[i], LOW);
+    }
+  }
+  
+  // read the values and adjust
+  int riseSetting = analogRead(0) + analogRead(2) + 5;
+  int fallSetting = analogRead(1) + analogRead(3) + 5;
+  
+  riseValue = 255.0 / riseSetting;
+  fallValue = 255.0 / fallSetting;  
+}
+
+//  =================== convenience routines ===================
+
+//  isr() - quickly handle interrupts from the clock input
+//  ------------------------------------------------------
+void isr()
+{
+  clkState = HIGH;
+}
+
+//  deJitter(int, int) - smooth jitter input
+//  ----------------------------------------
+int deJitter(int v, int test)
+{
+  if (abs(v - test) > 8) {
+    return v;
+  }
+  return test;
+}
+
+//  dacOutput(long) - deal with the DAC output
+//  ------------------------------------------
+void dacOutput(long v)
+{
+ int tmpVal = v;
+ bitWrite(PORTD, 5, tmpVal & 1);
+ bitWrite(PORTD, 6, (tmpVal & 2) > 0);
+ bitWrite(PORTD, 7, (tmpVal & 4) > 0);
+ bitWrite(PORTB, 0, (tmpVal & 8) > 0);
+ bitWrite(PORTB, 1, (tmpVal & 16) > 0);
+ bitWrite(PORTB, 2, (tmpVal & 32) > 0);
+ bitWrite(PORTB, 3, (tmpVal & 64) > 0);
+ bitWrite(PORTB, 4, (tmpVal & 128) > 0);
+}
