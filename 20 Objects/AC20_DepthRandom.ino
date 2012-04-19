@@ -20,6 +20,7 @@
 //
 //  Created:  12 Feb 2011
 //  Modified: 17 Apr 2012  ddg Updated for Arduino 1.0
+//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -106,17 +107,12 @@ void isr()
   clkState = HIGH;
 }
 
-//  dacOutput(long) - deal with the DAC output
-//  ------------------------------------------
-void dacOutput(long v)
+//  dacOutput(byte) - deal with the DAC output
+//  -----------------------------------------
+void dacOutput(byte v)
 {
-  // feed this routine a value between 0 and 255 and teh DAC
-  // output will send it out.
-  int tmpVal = v;
-  for (int i=0; i<8; i++) {
-    digitalWrite(pinOffset + i, tmpVal & 1);
-    tmpVal = tmpVal >> 1;
-  }
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================

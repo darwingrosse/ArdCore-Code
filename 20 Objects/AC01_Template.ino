@@ -46,6 +46,7 @@
 //
 //  Created:  10 April 2011  (Complete rewrite as test fixture)
 //  Modified: 17 April 2012  ddg  Updated for Arduino 1.0
+//						18 April 2012	 ddg  Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -180,8 +181,9 @@ void isr()
 
 //  dacOutput(long) - deal with the DAC output
 //  ------------------------------------------
-void dacOutput(long v)
+void dacOutput(byte v)
 {
+	/*
   // feed this routine a value between 0 and 255 and teh DAC
   // output will send it out.
   int tmpVal = v;
@@ -189,6 +191,13 @@ void dacOutput(long v)
     digitalWrite(pinOffset + i, tmpVal & 1);
     tmpVal = tmpVal >> 1;
   }
+  */
+  
+  // replacement routine as suggested by Alphonso Alba
+  // this code accomplishes the same thing as the original
+  // code from above, but is approx 4x faster
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  deJitter(int, int) - smooth jitter input

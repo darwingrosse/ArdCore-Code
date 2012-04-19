@@ -27,6 +27,7 @@
 //                             Inverted knob reads.
 //                             Low interval set to trigger-only.
 //            17 Apr 2012  ddg Updated for Arduino 1.0
+//						18 Apr 2012	 ddg  Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -155,15 +156,12 @@ void isr()
   clkState = HIGH;
 }
 
-//  dacOutput(long) - deal with the DAC output
-//  ------------------------------------------
-void dacOutput(int v)
+//  dacOutput(byte) - deal with the DAC output
+//  -----------------------------------------
+void dacOutput(byte v)
 {
-  int tmpVal = v;
-  for (int i=0; i<8; i++) {
-    digitalWrite(pinOffset + i, tmpVal & 1);
-    tmpVal = tmpVal >> 1;
-  }
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================

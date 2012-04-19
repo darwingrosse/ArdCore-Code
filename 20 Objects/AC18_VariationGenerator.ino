@@ -22,6 +22,7 @@
 //
 //  Created:  11 Feb 2011
 //  Modified: 17 Apr 2012  ddg Updated for Arduino 1.0
+//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -138,6 +139,14 @@ void loop()
 void isr()
 {
   clkState = HIGH;
+}
+
+//  dacOutput(byte) - deal with the DAC output
+//  -----------------------------------------
+void dacOutput(byte v)
+{
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================

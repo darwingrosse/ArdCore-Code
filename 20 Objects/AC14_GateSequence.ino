@@ -23,6 +23,7 @@
 //  Created:  03 Feb 2011
 //  Modified: 13 Mar 2011 - ddg Code cleanup
 //            17 Apr 2012  ddg Updated for Arduino 1.0
+//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -143,6 +144,14 @@ void loop()
 }
 
 //  =================== convenience routines ===================
+
+//  dacOutput(byte) - deal with the DAC output
+//  -----------------------------------------
+void dacOutput(byte v)
+{
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
+}
 
 //  isr() - quickly handle interrupts from the clock input
 //  ------------------------------------------------------

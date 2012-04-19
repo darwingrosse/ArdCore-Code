@@ -23,6 +23,7 @@
 //  Modified: 18 Mar 2011 - ddg Complete rewrite of output
 //                              Added trigger outputs
 //            17 Apr 2012  ddg Updated for Arduino 1.0
+//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -151,19 +152,12 @@ void getUpdateValue()
 
 //  =================== convenience routines ===================
 
-//  dacOutput(long) - deal with the DAC output
-//  ------------------------------------------
-void dacOutput(long v)
+//  dacOutput(byte) - deal with the DAC output
+//  -----------------------------------------
+void dacOutput(byte v)
 {
- int tmpVal = v;
- bitWrite(PORTD, 5, tmpVal & 1);
- bitWrite(PORTD, 6, (tmpVal & 2) > 0);
- bitWrite(PORTD, 7, (tmpVal & 4) > 0);
- bitWrite(PORTB, 0, (tmpVal & 8) > 0);
- bitWrite(PORTB, 1, (tmpVal & 16) > 0);
- bitWrite(PORTB, 2, (tmpVal & 32) > 0);
- bitWrite(PORTB, 3, (tmpVal & 64) > 0);
- bitWrite(PORTB, 4, (tmpVal & 128) > 0);
+  PORTB = (PORTB & B11100000) | (v >> 3);
+	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================
