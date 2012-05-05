@@ -20,7 +20,8 @@
 //
 //  Created:  12 Feb 2011
 //  Modified: 17 Apr 2012  ddg Updated for Arduino 1.0
-//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
+//	      18 Apr 2012  ddg Changed dacOutput routine to Alba version
+//            04 May 2012  ddg Fixed lack of interrupt issue
 //
 //  ============================================================
 //
@@ -73,6 +74,9 @@ void setup() {
     pinMode(pinOffset+i, OUTPUT);
     digitalWrite(pinOffset+i, LOW);
   }
+  
+  // Note: Interrupt 0 is for pin 2 (clkIn)
+  attachInterrupt(0, isr, RISING);
 }
 
 //  ==================== start of loop() =======================
