@@ -1,13 +1,14 @@
 
 //  ============================================================
 //
-//  Program: ArdCore ClockDivide
+//  Program: ArdCore Master Clock
 //
 //  Description: Given incoming clock pulses, output two
-//               triggers with varying delays
+//               triggers with varying delays, as well as
+//               user-defined clock divisions/alternations.
 //
-//    Knob 1: Division of clock out 1 (1-32)
-//    Knob 2: Division of clock out 2 (1-32)
+//    Knob 1: Clock speed - turn to 0 for clocked-only functionality
+//    Knob 2: Trigger time (5-261 ms)
 //    Analog In 1: Additional division offset (1-16)
 //    Analog In 2: HIGH to reset clock 1 & 2
 //    Digital Out 1: Trigger output 1
@@ -23,7 +24,7 @@
 //                             Change milli store to uint.
 //            25 Feb 2011  ddg Changed reset to handle both units
 //                             Added voltage controlled offset.
-//            18 Apr 2012  ddg Changed dacOutput routine to Alba version
+//            11 May 2012  ddg Revert to saved version.
 //
 //  ============================================================
 //
@@ -42,22 +43,25 @@
 //
 //  ================= start of global section ==================
 
-const int expClocks[8][32] = {
-  {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+const int MAX_CLOCK = 31;
+
+const int clockMap[8][32] = {
   {1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0},
   {0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
   {1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0},
-  {0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0},
   {0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0},
-  {0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1},
-  {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0}
+  {1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0},
+  {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+  {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0}
 };
+
+int currClock = 0;
 
 //  constants related to the Arduino Nano pin use
 const int clkIn = 2;           // the digital (clock) input
 const int digPin[2] = {3, 4};  // the digital output pins
 const int pinOffset = 5;       // the first DAC pin (from 5-12)
-const int trigTime = 25;       // triggers are 10 ms.
 
 //  variables for interrupt handling of the clock input
 volatile int clkState = LOW;
@@ -70,6 +74,16 @@ unsigned long prevMilli[2] = {0, 0};     // the last time of a loop
 int currTick = 0; // ticks for the output expander
 unsigned long currMilli = 0;
 int currState = 0;
+
+// variables for timing loop
+unsigned long prevTiming = 0;    // the last time of a timed loop
+int interval = 10;               // the last interval value
+int doStep = 0;                  // do we perform a step move?
+
+int onoffState = 0;              // the on/off state (from analog 3)
+int oldState = 0;                // the old on/off state
+
+int trigTime = 25;               // triggers are variable.
 
 //  ==================== start of setup() ======================
 
@@ -98,49 +112,79 @@ void setup() {
 void loop()
 {
   int i;
+  unsigned long thisMillis = millis();
+  
+  doStep = 0;
+  
+  // service a clock trigger
+  if (clkState == HIGH) {
+     clkState = LOW;
+     if (interval >= 1270) {
+       doStep = 1;
+     }
+  }
+  
+  // check for a timer hit
+  if ((interval < 1270) && ((thisMillis - prevTiming) > interval)) {
+    prevTiming = thisMillis;
+    doStep = 1;
+  }
 
-  // deal with possible reset
-  for (i=0; i<2; i++) {
-    if (analogRead(3) > 511) {
-      clockTick[i] = (analogRead(i) >> 6) + 1;
-      currTick = 0;
+  // if we are off, don't do anything
+  if (!onoffState) {
+    doStep = 0;
+  }
+
+  // do our Step function
+  if (doStep) {
+    // fire off the step blinker
+    digState[0] = HIGH;
+    prevMilli[0] = thisMillis;
+    digitalWrite(digPin[0], HIGH);
+
+    currClock -= 1;
+    if (currClock < 0) {
+      currClock = MAX_CLOCK;
+    }
+    
+    for (i=0; i<8; i++) {
+      if (clockMap[i][MAX_CLOCK-currClock] > 0) {
+        digitalWrite(pinOffset + i, HIGH);
+      }
     }
   }
   
-  // deal with incoming clock ticks
-  if (clkState == HIGH) {
-    clkState = LOW;  // reset for the next clock
+  // do a state change
+  if (oldState != onoffState) {
+    oldState = onoffState;
     
-    for (int i=0; i<2; i++) {
-      clockTick[i] --;
-      if (clockTick[i] < 1) {
-        digState[i] = HIGH;
-        prevMilli[i] = millis();
-        digitalWrite(digPin[i], HIGH);
-        
-        clockTick[i] = (analogRead(i) >> 6) + 1 + (analogRead(2) >> 6);
-      }
+    if (onoffState == 1) {
+      digitalWrite(digPin[1], HIGH);
+      delay(5);
+      digitalWrite(digPin[1], LOW);
     }
-    
-    currTick++;
-    if (currTick > 31)  currTick = 0;
-    dacOutput();
-    currMilli = millis();
-    currState = 1;
   }
   
   // deal with trigger turnoff
-  for (int i=0; i<2; i++) {
-    if ((digState[i] == HIGH) && ((millis() - prevMilli[i]) > trigTime)) {
-      digState[i] = LOW;
-      digitalWrite(digPin[i], LOW);
+  if ((digState[0] == HIGH) && ((thisMillis - prevMilli[0]) > trigTime)) {
+    digState[0] = LOW;
+    digitalWrite(digPin[0], LOW);
+    
+    for (i=0; i<8; i++) {
+      digitalWrite(pinOffset + i, 0);
     }
   }
   
-  if ((currState == HIGH) && ((millis() - currMilli) > trigTime)) {
-    currState = LOW;
-    for (int i=0; i<8; i++) {
-      digitalWrite(pinOffset+i, LOW);
+  // get the current user settings
+  interval = (((1023 - analogRead(0)) >> 4) * 20) + 30;
+  trigTime = (analogRead(1) >> 2) + 5;
+  
+  onoffState = analogRead(3) > 512;
+  if (onoffState != oldState) {
+    prevTiming = 0;
+    
+    for (i=0; i<8; i++) {
+      currClock = 0;
     }
   }
 }
@@ -156,14 +200,6 @@ void isr()
   // In most cases, you just want to set a variable and get
   // out.
   clkState = HIGH;
-}
-
-//  dacOutput(byte) - deal with the DAC output
-//  -----------------------------------------
-void dacOutput(byte v)
-{
-  PORTB = (PORTB & B11100000) | (v >> 3);
-	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================
