@@ -26,7 +26,7 @@
 //                             - Improved on/off testing
 //                             - Cleaned up gate handling
 //            17 Apr 2012  ddg Updated for Arduino 1.0
-//						18 Apr 2012	 ddg Changed dacOutput routine to Alba version
+//	      18 Apr 2012  ddg Changed dacOutput routine to Alba version
 //
 //  ============================================================
 //
@@ -131,7 +131,7 @@ void loop()
 void dacOutput(byte v)
 {
   PORTB = (PORTB & B11100000) | (v >> 3);
-	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
+  PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  ===================== end of program =======================
