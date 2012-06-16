@@ -1,3 +1,19 @@
+/* Delay Test
+
+Delay Input= jack A2...KNOB A2=INPUT LEVEL...turn this down quite a bit
+Delay time=knob/jack A3
+knob A0=mod1
+knob a1=FEEDBACK!
+
+
+*/
+
+
+
+
+
+
+
 // defines for setting and clearing register bits
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))

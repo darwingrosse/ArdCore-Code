@@ -1,3 +1,23 @@
+/*
+
+SMOOTHER DELAY ....mix this with your orignal audio..not bad/*
+
+
+
+A0= unused
+A1=DELAY TIME
+A2 KNOB=INPUT LEVEL...keep this low
+A3 KNOB=unused
+
+A2 JACK=AUDIO INPUT
+A3 JACK=UNUSED
+DAC OUT=AUDIO OUT
+
+*/
+
+
+
+
 // defines for setting and clearing register bits
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
@@ -102,7 +122,7 @@ void loop () {
 
   
   //analogReads
-  signalOut = analogRead(3) >> 2; //volume change
+  signalOut = analogRead(2) >> 2; //volume change
   inputRead();
 
   //Effacts
@@ -115,7 +135,7 @@ void loop () {
   
   //write to output
  dacOutput(signalOut);
-  delayMicroseconds(map(anaVs[1], 0, 1023, 20000, 1));
+  //delayMicroseconds(map(analogRead(0), 0, 1023, 20000, 1));
   
 }
 
@@ -127,7 +147,7 @@ void loop () {
 
 void digitalDelay(){
   
-    time = map(analogRead(2), 0, 1023,0, (storage - 1));//storageORY ARRAY MINUS 1...MAPPED FOR DELAY
+    time = map(analogRead(1), 0, 1023,0, (storage - 1));//storageORY ARRAY MINUS 1...MAPPED FOR DELAY
   
     dlyCounter++;
     if(dlyCounter > (storage-1)){

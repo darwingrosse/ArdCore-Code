@@ -1,12 +1,24 @@
-/* Delay WITH WEIRD LOOPING
 
-Delay Input= jack A2...KNOB A2=INPUT LEVEL...turn this down quite a bit
-Delay time=knob/jack A3
-knob A0=mod...weird!!!
-knob a1=FEEDBACK and looping
+/*
 
+SWIRLY DELAY EXPERIMENTS
+
+A0= time
+A1=feedback
+A2 KNOB=INPUT LEVEL...keep this low
+A3 KNOB=swirly time
+
+A2 JACK=AUDIO INPUT
+A3 JACK=SWirly time
+DAC OUT=AUDIO OUT
 
 */
+
+
+
+
+
+
 
 #include "dsp.h" // include hardware timers and definitions
 const int pinOffset = 5;       // the first DAC pin (from 5-12)
@@ -40,8 +52,8 @@ void loop() {
 	//read controll values from pots
 	if(timer>timeout){ //check the clock
 		//read the scaled pins
-		delayLength = ( ( (float)arraySize-1 ) * ((float)analogRead(1)/1024.0)) + 1;
-		feedback = (float)analogRead(3) / 1600.0; //limit feedback
+		delayLength =  ( (float)arraySize-1 ) * ((float)analogRead(3) + 1);
+		feedback = (float)analogRead(1) / 1600.0; //limit feedback
 		timer = 0; //reset the clock
 	}
 
@@ -56,11 +68,9 @@ void loop() {
 	//update delPointer (where are we in the array)
 	delPointer = pointer + delayLength;
 	delPointer = delPointer % arraySize;
-// delayLength=(delayLength&&random(500)); //not as great
-feedback=((feedback)&&(random(500)));  // VERY COOL EFFECT!!
+ 
 	//insert sample into the array with feedback.
 	delArr[pointer] = input + (delArr[delPointer] * feedback);
-
  
 	//set the output sample
 	out = delArr[delPointer] + input;
