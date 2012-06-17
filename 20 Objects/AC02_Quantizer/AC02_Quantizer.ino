@@ -48,6 +48,15 @@ const int clkIn = 2;           // the digital (clock) input
 const int digPin[2] = {3, 4};  // the digital output pins
 const int pinOffset = 5;       // the first DAC pin (from 5-12)
 
+//  constant for actual 0-5V quantization (vs. >> 4)
+const int qArray[65] = {
+  9,   26,  43,  60,  77,  94,  111, 128, 145, 162, 180, 197,
+  214, 231, 248, 265, 282, 299, 316, 333, 350, 367, 384, 401,
+  418, 435, 452, 469, 486, 503, 521, 538, 555, 572, 589, 606, 
+  623, 640, 657, 674, 691, 708, 725, 742, 759, 776, 793, 810,
+  827, 844, 862, 879, 896, 913, 930, 947, 964, 981, 998, 1015,
+  32768};
+
 //  variables for interrupt handling of the clock input
 volatile int clkState = LOW;
 
@@ -61,7 +70,7 @@ int inValue = 0;               // the input value
 int testValue = -1;            // the test value
 int quantValue = -1;           // the quantized value
 
-int outValue = 0;              // the DAC output value
+byte outValue = 0;              // the DAC output value
 int oldTranspose = -1;         // the test transpose value
 int transpose = 0;             // the transposition amount
 
@@ -72,6 +81,8 @@ int gateDuration = 0;          // the duration of the output gate
 //  Standard setup routine - see ArdCore_Template for info.
 
 void setup() {
+  Serial.begin(9600);
+  
   // set up the digital (clock) input
   pinMode(clkIn, INPUT);
   
@@ -126,8 +137,14 @@ void loop()
   
   // do the quantization
   if (doQuant) {
+    Serial.print(inValue);
+    Serial.print('\t');
+    Serial.print(transpose);
+
     // send the note
     outValue = quantNote(inValue);
+    Serial.println(outValue);
+
     dacOutput(outValue);
     
     // do the triggers and gates
@@ -167,7 +184,7 @@ void isr()
 void dacOutput(byte v)
 {
   PORTB = (PORTB & B11100000) | (v >> 3);
-	PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
+  PORTD = (PORTD & B00011111) | ((v & B00000111) << 5);
 }
 
 //  deJitter(int, int) - smooth jitter input
@@ -179,7 +196,7 @@ int deJitter(int v, int test)
   // continuous values, you might want to change this to a
   // smaller value, or simply uncomment the next line:
   //
-  // return v;
+  return v;
   
   if (abs(v - test) > 8) {
     return v;
@@ -191,9 +208,22 @@ int deJitter(int v, int test)
 //  -------------------------------------------------------
 int quantNote(int v)
 {
-  int tempVal = v >> 4;  // decrease the value to 0-64 - ~ a 5 volt range
-  tempVal += transpose;  // add the transposition
-  return (tempVal << 2); // increase it to the full 8-bit range
+  int tempVal = vQuant(v);  // decrease the value to 0-64 - ~ a 5 volt range
+  tempVal += transpose;      // add the transposition
+  return (tempVal << 2);     // increase it to the full 8-bit range
+}
+
+//  vQuant(int) - properly convert an ADC reading to a value
+//  ---------------------------------------------------------
+int vQuant(int v)
+{
+  int tmp = 0;
+  
+  while (qArray[tmp] > v) {
+    tmp++;
+  }
+  
+  return tmp;
 }
 
 //  ===================== end of program =======================
