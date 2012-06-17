@@ -49,13 +49,13 @@ const int digPin[2] = {3, 4};  // the digital output pins
 const int pinOffset = 5;       // the first DAC pin (from 5-12)
 
 //  constant for actual 0-5V quantization (vs. >> 4)
-const int qArray[65] = {
-  9,   26,  43,  60,  77,  94,  111, 128, 145, 162, 180, 197,
-  214, 231, 248, 265, 282, 299, 316, 333, 350, 367, 384, 401,
-  418, 435, 452, 469, 486, 503, 521, 538, 555, 572, 589, 606, 
-  623, 640, 657, 674, 691, 708, 725, 742, 759, 776, 793, 810,
-  827, 844, 862, 879, 896, 913, 930, 947, 964, 981, 998, 1015,
-  32768};
+const int qArray[61] = {
+  0,   9,   26,  43,  60,  77,  94,  111, 128, 145, 162, 180, 
+  197, 214, 231, 248, 265, 282, 299, 316, 333, 350, 367, 384, 
+  401, 418, 435, 452, 469, 486, 503, 521, 538, 555, 572, 589, 
+  606, 623, 640, 657, 674, 691, 708, 725, 742, 759, 776, 793, 
+  810, 827, 844, 862, 879, 896, 913, 930, 947, 964, 981, 998, 
+  1015};
 
 //  variables for interrupt handling of the clock input
 volatile int clkState = LOW;
@@ -66,13 +66,10 @@ unsigned long digMilli[2] = {0, 0};     // the timing variables
 unsigned long digTimes[2] = {10, 10};   // the timing settings
 
 // variables of interest
-int inValue = 0;               // the input value
-int testValue = -1;            // the test value
-int quantValue = -1;           // the quantized value
-
-byte outValue = 0;              // the DAC output value
-int oldTranspose = -1;         // the test transpose value
 int transpose = 0;             // the transposition amount
+int inValue = 0;               // the input value
+byte outValue = 0;             // the DAC output value
+int oldOut = -1;               // the last output value
 
 int doQuant = 0;               // flag to do calcs
 int gateDuration = 0;          // the duration of the output gate
@@ -106,22 +103,20 @@ void setup() {
 
 void loop()
 {
+  int tempval = 0;
+  
   // test for transpose change
-  transpose = analogRead(0) / 86;
-  if (transpose != oldTranspose) {
-    oldTranspose = transpose;
+  tempval = analogRead(0) / 86;
+  if (tempval != transpose) {
+    transpose = tempval;
     doQuant = 1;
   }
 
   // test for input change
-  inValue = deJitter(analogRead(2), inValue);
-  if (inValue != testValue) {
-    testValue = inValue;
-    int newValue = quantNote(inValue);
-    if (newValue != quantValue) {
-      quantValue = newValue;
-      doQuant = 1;
-    }
+  tempval = deJitter(analogRead(2), inValue);
+  if (tempval != inValue) {
+    inValue = tempval;
+    doQuant = 1;
   }
   
   // check for suppression
@@ -137,21 +132,30 @@ void loop()
   
   // do the quantization
   if (doQuant) {
-    Serial.print(inValue);
-    Serial.print('\t');
-    Serial.print(transpose);
 
     // send the note
     outValue = quantNote(inValue);
-    Serial.println(outValue);
+    if (outValue != oldOut) {
+      dacOutput(outValue);
+      oldOut = outValue;
 
-    dacOutput(outValue);
+    /*    
+    Serial.print(transpose);
+    Serial.print('\t');
+    Serial.print(inValue);
+    Serial.print('\t');
+    Serial.print(outValue);
+    Serial.print('\t');    
+    Serial.print(doQuant);
+    Serial.println();
+    */
     
-    // do the triggers and gates
-    for (int i=0; i<2; i++) {
-      digitalWrite(digPin[i], HIGH);
-      digState[i] = HIGH;
-      digMilli[i] = millis();
+      // do the triggers and gates
+      for (int i=0; i<2; i++) {
+        digitalWrite(digPin[i], HIGH);
+        digState[i] = HIGH;
+        digMilli[i] = millis();
+      }
     }
     
     doQuant = 0;
@@ -196,9 +200,9 @@ int deJitter(int v, int test)
   // continuous values, you might want to change this to a
   // smaller value, or simply uncomment the next line:
   //
-  return v;
+  // return v;
   
-  if (abs(v - test) > 8) {
+  if (abs(v - test) > 2) {
     return v;
   }
   return test;
@@ -206,7 +210,7 @@ int deJitter(int v, int test)
 
 //  quantNote(int) - drop an incoming value to a note value
 //  -------------------------------------------------------
-int quantNote(int v)
+byte quantNote(int v)
 {
   int tempVal = vQuant(v);  // decrease the value to 0-64 - ~ a 5 volt range
   tempVal += transpose;      // add the transposition
@@ -219,8 +223,10 @@ int vQuant(int v)
 {
   int tmp = 0;
   
-  while (qArray[tmp] > v) {
-    tmp++;
+  for (int i=0; i<61; i++) {
+    if (v >= qArray[i]) {
+      tmp = i;
+    }
   }
   
   return tmp;
