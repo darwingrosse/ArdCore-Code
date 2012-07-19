@@ -1,3 +1,13 @@
+
+
+
+/* REVERN Test
+
+Delay Input= jack A#...KNOB A#=INPUT LEVEL...turn this down quite a bit
+
+
+*/
+
 // defines for setting and clearing register bits
 #ifndef cbi
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))

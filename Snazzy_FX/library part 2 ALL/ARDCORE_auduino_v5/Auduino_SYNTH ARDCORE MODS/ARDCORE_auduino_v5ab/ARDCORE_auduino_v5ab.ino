@@ -1,3 +1,6 @@
+//BASIC ARDCORE PORT. 
+
+
 // Auduino, the Lo-Fi granular synthesiser
 //
 // by Peter Knight, Tinker.it http://tinker.it
@@ -8,11 +11,12 @@
 
 
 
-// Analog in 0: Grain 1 pitch
-// Analog in 1: Grain 2 decay
-// Analog in 2: Grain 1 decay
-// Analog in 3: Grain 2 pitch
-// Analog in 4: Grain repetition frequency
+// A0: Grain 1 pitch
+// A1: Grain 2 decay
+// A2: Grain 1 decay
+// A3: Grain 2 pitch
+//AUDIO OUT=DAC OUT
+//
 //
 // Digital 3: Audio out (Digital 11 on ATmega8)
 //
