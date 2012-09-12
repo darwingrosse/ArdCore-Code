@@ -161,8 +161,8 @@ getUpdateValue();
 void getUpdateValue()
 {
 float freqOffset = (map(analogRead(0), 0, 1023, 70, 1)/10.0);
-float msPerCycle = ((1023 - analogRead(2)) + 20) * 3.0 * freqOffset;
-float warpFactor = ((analogRead(3) >> 4) + 1) / 65.0;
+float msPerCycle = ((1023 - analogRead(2)) + 20) * 3.0 * freqOffset;//CV stuff
+float warpFactor = ((analogRead(3) >> 4) + 1) / 65.0; //cv stuff
 float oneOver = 1.0 - warpFactor;
 upStep = 255.0 / (msPerCycle * warpFactor);
 downStep = 255.0 / (msPerCycle * oneOver);
