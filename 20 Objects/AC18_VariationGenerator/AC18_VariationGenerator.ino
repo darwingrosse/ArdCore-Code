@@ -75,16 +75,16 @@ int pattern[10][16] = {
 void setup() {
 
   Serial.begin(9600);
-  
+
   // set up the digital (clock) input
   pinMode(clkIn, INPUT);
-  
+
   // set up the digital outputs
   for (int i=0; i<10; i++) {
     pinMode(pinOffset + i, OUTPUT);
     digitalWrite(pinOffset + i, LOW);
   }
-  
+
   // Note: Interrupt 0 is for pin 2 (clkIn)
   attachInterrupt(0, isr, RISING);
 }
@@ -96,30 +96,30 @@ void loop()
   // Check for clocking
   int doClock = 0;
   if (clkState) {
-    doClock = 0;
+    doClock = 1;
     clkState = 0;
   }
-  
+
   // Determine offsets
   int vShift = (analogRead(0) >> 7) + (analogRead(2) >> 7);
   int hShift = (analogRead(1) >> 7) + (analogRead(3) >> 7);
-  
+
   // if clocked, do output
   if (doClock) {
     for (int i=0; i<10; i++) {
       digState[i] = pattern[(i+vShift)%10][(cStep+hShift)%16];
       digitalWrite(pinOffset + i, digState[i]);
     }
-    
+
     cStep++;
     if (cStep >= 16) {
       cStep = 0;
     }
 
-    onState = 1;    
+    onState = 1;
     lastMillis = millis();
   }
-    
+
   // if trigTime complete, turn off
   if ((onState) && (millis() - lastMillis > trigTime)) {
     for (int i=0; i<10; i++) {
@@ -129,7 +129,7 @@ void loop()
     }
     onState = 0;
   }
-  
+
 }
 
 //  =================== convenience routines ===================
