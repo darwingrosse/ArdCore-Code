@@ -174,7 +174,7 @@ void loop()
       
       // increment, and check for wrap-around
       currentPos++;
-      if ((currentPos >= loopEnd) || (currentPos >= loopMax)) {
+      if ((currentPos > loopEnd) || (currentPos > loopMax)) {
         currentPos = loopStart;
       }
      }
