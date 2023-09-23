@@ -107,11 +107,8 @@ void setup() {
 //  ==================== start of loop() =======================
 void loop()
 {
-  int i, j, k;
-
   // deal with possible change of record/play mode
-  i = analogRead(3) > 511;
-  
+  int i = analogRead(3) > 511;
   
   // This determines if a record mode setting needs to change. NOTE:
   // most of the complexity comes because of the auto-turnoff at the
@@ -174,7 +171,7 @@ void loop()
       
       // increment, and check for wrap-around
       currentPos++;
-      if ((currentPos >= loopEnd) || (currentPos >= loopMax)) {
+      if ((currentPos > loopEnd) || (currentPos > loopMax)) {
         currentPos = loopStart;
       }
      }
